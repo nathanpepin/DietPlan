@@ -118,7 +118,7 @@
 
     </div>
 
-    <!-- Modal for AI Estimator and Guides -->
+    <!-- Modal for Guides -->
     <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center p-4">
         <div id="modal-content" class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg p-6 fade-in-enter">
             <!-- Modal content will be injected here -->
@@ -206,7 +206,8 @@ function getDefaultState() {
         currentView: 'dashboard',
         currentDay: today,
         viewingDay: today,
-        weekPattern: 'A',        viewingPrepDay: 'sunday',
+        weekPattern: localStorage.getItem('lastWeekPattern') || 'A',  // Get last used pattern or default to 'A'
+        viewingPrepDay: 'sunday',
         dailyCalorieTarget: 2050,
         mealsCompleted: { A: {}, B: {} },
         prepCompleted: { A: { sunday: [], wednesday: [] }, B: { sunday: [], wednesday: [] } }
@@ -220,6 +221,8 @@ function saveState() {
         dietPlan
     };
     localStorage.setItem('dietAppT1Dv2', JSON.stringify(stateToSave));
+    // Save the last used week pattern separately for persistence across resets
+    localStorage.setItem('lastWeekPattern', appState.weekPattern);
 }
 
 function loadState() {
@@ -228,8 +231,16 @@ function loadState() {
         const parsedData = JSON.parse(savedData);
         appState = parsedData.appState;
         dietPlan = parsedData.dietPlan;
-        appState.viewingDay = appState.currentDay;        if (appState.viewingPrepDay === undefined) {
-             appState.viewingPrepDay = 'sunday';
+        
+        // Update viewing day to current day if it's different
+        const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        const now = new Date();
+        const today = dayNames[now.getDay()];
+        appState.currentDay = today;
+        appState.viewingDay = today;
+        
+        if (appState.viewingPrepDay === undefined) {
+            appState.viewingPrepDay = 'sunday';
         }
     } else {
         // First time load or after a full reset
@@ -362,15 +373,6 @@ function renderPrepList() {
 }
 
 function renderShoppingList() {
-    // NEW: AI Shopping Assistant
-    const aiAssistantHtml = `
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm mb-6">
-             <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">✨ AI Shopping Assistant</h3>
-             <p class="text-slate-600 dark:text-slate-400 mb-4">Need ideas? Get a curated list of items based on your goals.</p>
-             <button onclick="openShoppingAssistant()" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Get Shopping Ideas</button>
-        </div>
-    `;
-
     const sections = Object.keys(dietPlan.shoppingList).map(category => {
         const itemsHtml = dietPlan.shoppingList[category].map(item => `<li class="py-2 px-3 border-b border-slate-100 dark:border-slate-700">${item}</li>`).join('');
         return `
@@ -379,46 +381,29 @@ function renderShoppingList() {
                 <ul class="bg-white dark:bg-slate-800 rounded-b-md shadow-sm">${itemsHtml}</ul>
             </div>`;
     }).join('');
-    return `<h2 class="text-2xl font-bold mb-4">Shopping List</h2>${aiAssistantHtml}<div class="space-y-6">${sections}</div>`;
+    return `<h2 class="text-2xl font-bold mb-4">Shopping List</h2><div class="space-y-6">${sections}</div>`;
 }
 
 function renderGuides() {
-    let guideHtml = `
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm mb-6">
-             <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">✨ AI Recipe Generator</h3>
-             <p class="text-slate-600 dark:text-slate-400 mb-4">Get a simple recipe idea for today's lunch and dinner.</p>
-             <button onclick="generateRecipe()" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Generate Today's Recipe</button>
-             <div id="recipe-result" class="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-md min-h-[50px]">Click the button to generate a recipe!</div>
-        </div>
-    `;
-
     const guides = dietPlan.guides;
-    guideHtml += Object.entries(guides).map(([key, guide]) => {
+    const guideHtml = Object.entries(guides).map(([key, guide]) => {
         const contentHtml = guide.content.map(item => `
             <div class="py-3 border-b border-slate-100 dark:border-slate-700 last:border-b-0">
                 <p class="font-semibold text-slate-800 dark:text-slate-200">${item.q}</p>
                 <p class="text-slate-600 dark:text-slate-400">${item.a}</p>
             </div>`).join('');
         
-        let extraButton = '';
-        if (key === 'emergencyBox') {
-            extraButton = `<div class="mt-4">
-                                <button onclick="generateSnackIdeas()" class="w-full text-sm bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 py-2 px-4 rounded-md hover:bg-indigo-200 dark:hover:bg-indigo-500/30">✨ Get New Ideas</button>
-                                <div id="snack-ideas-result" class="mt-2 text-sm p-2 rounded-md">Click the button for new snack ideas!</div>
-                           </div>`;
-        }
-
         return `
             <div>
                 <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">${guide.title}</h3>
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm">${contentHtml}${extraButton}</div>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm">${contentHtml}</div>
             </div>
         `;
     }).join('');
-    return `<h2 class="text-2xl font-bold mb-4">Guides & AI Tools</h2><div class="space-y-6">${guideHtml}</div>`;
+    return `<h2 class="text-2xl font-bold mb-4">Guides</h2><div class="space-y-6">${guideHtml}</div>`;
 }
 
-function renderAIModal(title, content) {
+function renderModal(title, content) {
     const modalContainer = document.getElementById('modal-container');
     const modalContent = document.getElementById('modal-content');
 
@@ -427,181 +412,9 @@ function renderAIModal(title, content) {
             <h3 class="text-xl font-bold">${title}</h3>
             <button onclick="closeModal()" class="text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100">&times;</button>
         </div>
-        ${content}`; // Inject dynamic content
+        ${content}`;
     modalContainer.classList.remove('hidden');
     modalContainer.classList.add('flex');
-}
-
-// --- GEMINI API & AI FUNCTIONS ---
-
-/**
- * Sanitizes a string to extract a valid JSON object.
- * @param {string} text - The raw text from the AI.
- * @returns {string|null} - A valid JSON string or null.
- */
-function extractJson(text) {
-    if (typeof text !== 'string') return null;
-    const startIndex = text.indexOf('{');
-    const endIndex = text.lastIndexOf('}');
-    if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
-        return null;
-    }
-    const jsonString = text.substring(startIndex, endIndex + 1);
-    try {
-        JSON.parse(jsonString);
-        return jsonString;
-    } catch (e) {
-        return null;
-    }
-}
-
-
-async function callGemini(prompt, isJson = false, schema = null) {
-    const apiKey = ""; // This will be populated by the environment.
-    const model = 'gemini-2.0-flash';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    
-    let payload = { contents: [{ parts: [{ text: prompt }] }] };
-    if (isJson) {
-        payload.generationConfig = {
-            responseMimeType: "application/json",
-            responseSchema: schema
-        };
-    }
-
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(`API call failed with status: ${response.status}. Body: ${errorBody}`);
-        }
-        const data = await response.json();
-        if (!data.candidates || data.candidates.length === 0) {
-           throw new Error("No response candidates from API.");
-        }
-        return data.candidates[0].content.parts[0].text;
-    } catch (error) {
-        console.error("Gemini API call error:", error);
-        return { error: `Failed to contact the AI model. There might be an issue with the API key or network connection. (${error.message})` };
-    }
-}
-
-async function handleAISwap(mealIndex) {
-    const input = document.getElementById('ai-input').value;
-    const resultDiv = document.getElementById('ai-result');
-    const submitBtn = document.getElementById('ai-submit-btn');
-
-    if (input.trim() === '') {
-        resultDiv.innerHTML = `<p class="text-red-500">Please describe the meal you want.</p>`;
-        return;
-    }
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = `<div class="loader"></div>`;
-
-    const originalMeal = dietPlan[`week${appState.weekPattern}`][appState.viewingDay].meals[mealIndex];
-    const { calories, protein } = originalMeal;
-
-    const prompt = `A user wants to swap a meal. The target is around ${calories} calories and ${protein}g of protein. The user wants to eat: "${input}". Determine a sensible portion size to best meet the calorie target. It's okay if protein doesn't match perfectly. Return a JSON object with the new meal's "name", "items" (as an array of strings), "calories", and "protein".`;
-
-    const schema = {
-        type: "OBJECT",
-        properties: {
-            name: { type: "STRING" },
-            items: { type: "ARRAY", items: { type: "STRING" } },
-            calories: { type: "NUMBER" },
-            protein: { type: "NUMBER" }
-        }
-    };
-
-    const result = await callGemini(prompt, true, schema);
-    if (result.error) {
-        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `Generate & Swap`;
-    } else {
-        const jsonString = extractJson(result);
-        if (!jsonString) {
-             resultDiv.innerHTML = `<p class="text-red-500">AI returned an invalid meal format. Please try again.</p>`;
-             console.error("Failed to extract JSON from AI response:", result);
-        } else {
-            const newMeal = JSON.parse(jsonString);
-            newMeal.type = originalMeal.type; // Maintain the meal type (breakfast, lunch, etc.)
-            performSwap(mealIndex, newMeal);
-            closeModal();
-        }
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `Generate & Swap`;
-    }
-}
-
-
-async function generateRecipe() {
-    const resultDiv = document.getElementById('recipe-result');
-    resultDiv.innerHTML = `<div class="flex justify-center"><div class="loader"></div></div>`;
-    
-    const dayData = dietPlan[`week${appState.weekPattern}`][appState.viewingDay];
-    const lunch = dayData.meals.find(m => m.type === 'lunch');
-    const dinner = dayData.meals.find(m => m.type === 'dinner');
-    
-    const prompt = `Create a simple, healthy recipe for a single person using the main ingredients from these two meals: Lunch (${lunch.name}) and Dinner (${dinner.name}). Assume basic pantry staples like oil, salt, and pepper are available. The recipe should be easy to follow with clear steps. The ingredients are: ${[...(lunch.items || []), ...(dinner.items || [])].join(', ')}. Format the output as clean HTML with headings and lists.`;
-
-    const result = await callGemini(prompt);
-    if (result.error) {
-        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
-    } else {
-        resultDiv.innerHTML = result.replace(/\n/g, '<br>');
-    }
-}
-
-async function generateSnackIdeas() {
-    const resultDiv = document.getElementById('snack-ideas-result');
-    resultDiv.innerHTML = `<div class="flex justify-center"><div class="loader"></div></div>`;
-    
-    const prompt = `Based on a high-protein diet, suggest 3 creative and satisfying "craving killer" snack ideas that are not just protein bars or chips. Focus on salty, savory, or satisfying textures. Provide a brief description for each. Format as a simple HTML list.`;
-    
-    const result = await callGemini(prompt);
-     if (result.error) {
-        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
-    } else {
-        resultDiv.innerHTML = result;    }
-}
-
-async function generateShoppingListIdeas(category) {
-    const resultDiv = document.getElementById('ai-shopping-result');
-    const submitBtn = document.getElementById('ai-shopping-submit-btn');
-    submitBtn.disabled = true;
-    resultDiv.innerHTML = `<div class="flex justify-center"><div class="loader"></div></div>`;
-
-    let prompt = `I need some shopping list ideas for my high-protein diet. `;
-    switch (category) {
-        case 'budget':
-            prompt += `Please suggest 5-7 budget-friendly, high-protein staple items I can buy.`;
-            break;
-        case 'flavor':
-            prompt += `Please suggest 5-7 low-calorie 'flavor booster' items to make my meals more interesting (like spices, sauces, or condiments).`;
-            break;
-        case 'snacks':
-            prompt += `Please suggest 5-7 healthy, high-protein snack items I can stock up on.`;
-            break;
-    }
-    prompt += ` Return the list as a simple, un-styled HTML unordered list (ul/li).`
-
-    const result = await callGemini(prompt);
-    if (result.error) {
-        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
-    } else {
-        resultDiv.innerHTML = result;
-    }
-    submitBtn.disabled = false;
-}
-
-// --- EVENT HANDLERS & LOGIC ---
-function closeSwapMenus() {
-    document.querySelectorAll('.swap-menu').forEach(menu => menu.remove());
 }
 
 function showSwapOptions(event, mealIndex) {
@@ -622,14 +435,6 @@ function showSwapOptions(event, mealIndex) {
     menu.style.top = `${rect.bottom + window.scrollY}px`;
     menu.style.right = `${window.innerWidth - rect.right}px`;
 
-    // NEW: Add AI Swap option
-    const aiSwapItem = document.createElement('button');
-    aiSwapItem.className = 'block w-full font-semibold text-left px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-600 border-b dark:border-slate-600';
-    aiSwapItem.innerHTML = '✨ AI Swap';
-    aiSwapItem.onclick = () => openAISwapModal(mealIndex);
-    menu.appendChild(aiSwapItem);
-
-
     availableSwapOptions.forEach((option) => {
         const item = document.createElement('button');
         item.className = 'block w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600';
@@ -641,33 +446,10 @@ function showSwapOptions(event, mealIndex) {
     document.body.appendChild(menu);
 }
 
-function openAISwapModal(mealIndex) {
-    const content = `
-        <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Describe the meal you want instead. The AI will try to match the original meal's calorie and protein goals.</p>
-            <textarea id="ai-input" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md p-2 h-24" placeholder="e.g., Chicken parmesan..."></textarea>
-            <button id="ai-submit-btn" onclick="handleAISwap(${mealIndex})" class="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center justify-center">Generate & Swap</button>
-            <div id="ai-result" class="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-md min-h-[50px]"></div>
-        </div>`;    renderAIModal('✨ AI Powered Swap', content);
+// --- EVENT HANDLERS & LOGIC ---
+function closeSwapMenus() {
+    document.querySelectorAll('.swap-menu').forEach(menu => menu.remove());
 }
-
-
-function openShoppingAssistant() {
-    const content = `
-        <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">What kind of shopping ideas are you looking for?</p>
-            <div class="space-y-2">
-                <button onclick="generateShoppingListIdeas('budget')" class="w-full text-left p-3 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border dark:border-slate-600">Budget-Friendly Staples</button>
-                <button onclick="generateShoppingListIdeas('flavor')" class="w-full text-left p-3 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border dark:border-slate-600">Flavor Boosters</button>
-                <button onclick="generateShoppingListIdeas('snacks')" class="w-full text-left p-3 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border dark:border-slate-600">Healthy Snack Stock-up</button>
-            </div>
-             <button id="ai-shopping-submit-btn" class="hidden"></button> <!-- Dummy button for loader state -->
-            <div id="ai-shopping-result" class="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-md min-h-[50px]"></div>
-        </div>
-    `;
-    renderAIModal('✨ AI Shopping Assistant', content);
-}
-
 
 function performSwap(mealIndex, newMeal) {
     dietPlan[`week${appState.weekPattern}`][appState.viewingDay].meals[mealIndex] = { ...newMeal };
@@ -753,10 +535,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Other Event Listeners
     document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => { appState.currentView = btn.dataset.view; render(); }));
-    document.getElementById('week-pattern-selector').addEventListener('change', (e) => { appState.weekPattern = e.target.value; appState.viewingDay = appState.currentDay; render(); });    document.getElementById('reset-week-btn').addEventListener('click', resetWeek);
+    document.getElementById('week-pattern-selector').addEventListener('change', (e) => { appState.weekPattern = e.target.value; appState.viewingDay = appState.currentDay; render(); });
+    document.getElementById('reset-week-btn').addEventListener('click', resetWeek);
     document.getElementById('modal-container').addEventListener('click', (e) => { if (e.target.id === 'modal-container') closeModal(); });
     document.addEventListener('click', closeSwapMenus);
-
 
     // Set initial values from state
     document.getElementById('week-pattern-selector').value = appState.weekPattern;
