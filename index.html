@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en" class="dark"> <!-- Default to dark mode -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Diet Plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        html.dark ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        html.dark ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Custom checkbox style */
+        .custom-checkbox:checked {
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        /* Simple transition for smooth UI changes */
+        .transition-all {
+            transition: all 0.3s ease-in-out;
+        }
+        /* Fade-in animation for modals and menus */
+        .fade-in-enter {
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        /* Loading spinner */
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        html.dark .loader {
+            border-color: #475569;
+            border-top-color: #60a5fa;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased">
+
+    <div id="app" class="max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+
+        <!-- Header -->
+        <header class="mb-6 md:mb-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">Your Diet Plan</h1>
+                    <p id="current-date-display" class="text-slate-500 dark:text-slate-400 mt-1">Loading...</p>
+                </div>
+                <div class="mt-4 sm:mt-0 flex items-center space-x-2">
+                     <select id="week-pattern-selector" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm py-2 px-3 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <option value="A">Week Pattern A</option>
+                        <option value="B">Week Pattern B</option>
+                    </select>
+                    <button id="dark-mode-toggle" class="p-2 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <!-- Sun Icon -->
+                        <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <!-- Moon Icon -->
+                        <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                    <button id="reset-week-btn" class="bg-red-500 text-white px-4 py-2 rounded-md shadow-sm hover:bg-red-600 dark:hover:bg-red-700 transition-all text-sm font-medium">Reset Week</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="mb-6 md:mb-8 bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm">
+            <ul class="flex justify-around text-sm">
+                <li><button data-view="dashboard" class="nav-btn w-full text-center px-2 py-2 sm:px-4 rounded-md font-medium">Dashboard</button></li>
+                <li><button data-view="prep" class="nav-btn w-full text-center px-2 py-2 sm:px-4 rounded-md font-medium">Prep</button></li>
+                <li><button data-view="shopping" class="nav-btn w-full text-center px-2 py-2 sm:px-4 rounded-md font-medium">Shopping</button></li>
+                <li><button data-view="guides" class="nav-btn w-full text-center px-2 py-2 sm:px-4 rounded-md font-medium">Guides</button></li>
+            </ul>
+        </nav>
+          <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Content will be dynamically rendered here -->
+        </main>
+
+    </div>
+
+    <!-- Modal for AI Estimator and Guides -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center p-4">
+        <div id="modal-content" class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg p-6 fade-in-enter">
+            <!-- Modal content will be injected here -->
+        </div>
+    </div>
+
+
+<script>
+// --- DATA MODEL ---
+// This is a deep copy of the original plan, used for resetting swaps.
+const originalDietPlan = {
+    weekA: {
+        monday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Chicken + Peas + Rice', calories: 400, protein: 40, items: ['5oz chicken', '1 cup peas', '1 cup rice'] }, { type: 'dinner', name: 'Steak + Carrots + Butter', calories: 700, protein: 50, items: ['6oz steak', '1 cup carrots', '1 pat butter'] }, { type: 'evening', name: 'Emergency Box + Greek Yogurt', calories: 550, protein: 45, items: ['1 box', '1 cup yogurt'] } ] },
+        tuesday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Soup + Fruit', calories: 400, protein: 20, items: ['1 can Chunky soup', '1 piece fruit'] }, { type: 'dinner', name: 'Ground Beef + Corn + Cheese', calories: 700, protein: 50, items: ['5oz ground beef', '1 cup corn', '1oz cheese'] }, { type: 'evening', name: 'Emergency Box + Protein Chips', calories: 550, protein: 40, items: ['1 box', '1 bag chips'] } ] },
+        wednesday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Chicken + Carrots', calories: 400, protein: 45, items: ['5oz chicken', '1 cup carrots'] }, { type: 'dinner', name: 'Hamburger + Bun + Cheese', calories: 750, protein: 50, items: ['6oz patty', '1 bun', '1 slice cheese'] }, { type: 'evening', name: 'Emergency Box + Ice Cream', calories: 600, protein: 25, items: ['1 box', '1 serving Halo Top'] } ] },
+        thursday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Soup + Fruit', calories: 400, protein: 20, items: ['1 can Chunky soup', '1 piece fruit'] }, { type: 'dinner', name: 'Chicken + Peas + Rice', calories: 650, protein: 50, items: ['6oz chicken', '1 cup peas', '1 cup rice'] }, { type: 'evening', name: 'Emergency Box + Dark Chocolate', calories: 500, protein: 25, items: ['1 box', '1 square dark chocolate'] } ] },
+        friday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Ground Beef + Vegetables', calories: 400, protein: 40, items: ['5oz ground beef', '1 cup mixed veg'] }, { type: 'dinner', name: 'Pizza Night', calories: 750, protein: 40, items: ['2-3 slices', 'Enjoy'] }, { type: 'evening', name: 'Emergency Box + Popcorn', calories: 600, protein: 25, items: ['1 box', '1 bag light popcorn'] } ] },
+        saturday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Soup + Fruit', calories: 400, protein: 20, items: ['1 can Chunky soup', '1 piece fruit'] }, { type: 'dinner', name: 'Steak + Vegetables', calories: 700, protein: 50, items: ['6oz steak', '1.5 cups veg'] }, { type: 'evening', name: 'Emergency Box + "Treat"', calories: 550, protein: 25, items: ['1 box', 'Your choice'] } ] },
+        sunday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Prep leftovers', calories: 400, protein: 30, items: ['Whatever is available'] }, { type: 'dinner', name: 'Prep Day Simple Meal', calories: 650, protein: 40, items: ['Easy to make meal'] }, { type: 'evening', name: 'Emergency Box', calories: 500, protein: 25, items: ['1 box'] } ] }
+    },
+    weekB: {
+        monday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Soup + Fruit', calories: 400, protein: 20, items: ['1 can Chunky soup', '1 piece fruit'] }, { type: 'dinner', name: 'Ground Beef Bowls', calories: 650, protein: 50, items: ['5oz beef', 'Rice, veg, sauce'] }, { type: 'evening', name: 'Emergency Box + Greek Yogurt', calories: 550, protein: 45, items: ['1 box', '1 cup yogurt'] } ] },
+        tuesday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Chicken + Vegetables', calories: 400, protein: 45, items: ['5oz chicken', '1.5 cups veg'] }, { type: 'dinner', name: 'Steak + Sweet Potato', calories: 700, protein: 50, items: ['6oz steak', '1 medium sweet potato'] }, { type: 'evening', name: 'Emergency Box + Almonds', calories: 550, protein: 30, items: ['1 box', '1/4 cup almonds'] } ] },
+        wednesday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Ground Beef + Vegetables', calories: 400, protein: 40, items: ['5oz beef', '1.5 cups mixed veg'] }, { type: 'dinner', name: 'Chicken + Rice + Peas', calories: 650, protein: 50, items: ['6oz chicken', '1 cup rice', '1/2 cup peas'] }, { type: 'evening', name: 'Emergency Box + Protein Bar', calories: 500, protein: 45, items: ['1 box', '1 protein bar'] } ] },
+        thursday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Soup + Fruit', calories: 400, protein: 20, items: ['1 can Chunky soup', '1 piece fruit'] }, { type: 'dinner', name: 'Burger + Vegetables', calories: 700, protein: 50, items: ['6oz patty', 'No bun', '2 cups veg'] }, { type: 'evening', name: 'Emergency Box + Small Chips', calories: 550, protein: 25, items: ['1 box', 'Small bag chips'] } ] },
+        friday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Chicken + Rice', calories: 400, protein: 45, items: ['5oz chicken', '1 cup rice'] }, { type: 'dinner', 'name': 'Pizza Night', calories: 800, protein: 40, items: ['Flexible amount'] }, { type: 'evening', name: 'Emergency Box + Dessert', calories: 500, protein: 25, items: ['1 box', 'Small dessert'] } ] },
+        saturday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Leftovers/Flexible', calories: 400, protein: 30, items: ['Flexible'] }, { type: 'dinner', name: 'Restaurant/Social', calories: 800, protein: 50, items: ['Enjoy!'] }, { type: 'evening', name: 'Emergency Box', calories: 500, protein: 25, items: ['1 box'] } ] },
+        sunday: { meals: [ { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] }, { type: 'lunch', name: 'Prep Day Meal', calories: 400, protein: 30, items: ['Easy prep meal'] }, { type: 'dinner', name: 'Simple Prep Dinner', calories: 650, protein: 40, items: ['Simple dinner'] }, { type: 'evening', name: 'Emergency Box', calories: 500, protein: 25, items: ['1 box'] } ] }
+    },
+    prepLists: {
+        sunday: [ { text: 'Cook 2 lbs shredded chicken', done: false }, { text: 'Cook 1 lb 90/10 ground beef', done: false }, { text: 'Boil 12 hard-boiled eggs', done: false }, { text: 'Cook 1 lb bacon', done: false }, { text: 'Stock frozen steamable vegetable packs', done: false }, { text: 'Mince garlic, store in oil', done: false }, { text: 'Dice onions for cooking', done: false }, { text: 'Buy/check 7 cans of Chunky soup', done: false }, { text: 'Assemble 7 "Emergency Boxes"', done: false }, { text: 'Pre-portion cheese', done: false } ],
+        wednesday: [ { text: 'Grill/bake 1 lb more protein if low', done: false }, { text: 'Boil more eggs if needed', done: false }, { text: 'Check soup inventory', done: false }, { text: 'Prep 3-4 more emergency boxes', done: false }, { text: 'Assess what worked/didn\'t work', done: false } ]
+    },
+    shoppingList: {
+        meats: ["Bacon", "Beef", "Chicken", "Eggs", "Ham", "Jerky", "Pork", "Sausage", "Steak", "Turkey"],
+        dairy: ["Butter", "Cheese", "Greek yogurt"],
+        fruits: ["Apple", "Apricots", "Avocado", "Blackberry", "Blueberries", "Coconut", "Cranberries", "Guava", "Kiwi", "Lemon", "Lime", "Mango", "Orange/Tangerine", "Peach", "Pear", "Plums/Prunes", "Raspberry", "Strawberries", "Mixed frozen berries"],
+        veggies: ["Carrots", "Garlic", "Mushroom", "Onion", "Peas", "Peppers", "Tomatos", "Frozen steamable veg packs"],
+        nutsAndSeeds: ["Almonds", "Brazil nuts", "Chia seeds", "Flaxseed", "Hazel nuts", "Seasame seeds", "Walnuts"],
+        grains: ["Corn", "Keto bread", "Oatmeal", "Popcorn", "Quinoa", "Whole grain rice", "Whole wheat bread"],
+        beans: ["Black beans", "Lentils", "Chick peas"],
+        other: ["Dark chocolate", "Protein bars", "Protein chips", "Protein powder", "Chunky soup", "Seasonings"]
+    },
+    guides: {
+        emergencyBox: { title: "Emergency Box Contents", content: [ { q: "Protein Base (Pick One)", a: "1 protein bar OR 1 bag protein chips OR 2 hard-boiled eggs with seasoning." }, { q: "Healthy Fat", a: "1 portion of pre-measured nuts or seeds." }, { q: "Fruit", a: "1 piece of fruit (e.g., apple, banana, orange)." }, { q: "Salty Item (Pick One)", a: "Pickled eggs, beef/turkey jerky, or a cheese stick." } ] },
+        troubleshooting: { title: "Troubleshooting Guide", content: [ { q: "If You Skip Morning Prep?", a: "Keep backup protein shakes/bars. Use emergency boxes for meals. Get back on track next meal." }, { q: 'If Evening Cravings Hit Hard?', a: 'Drink 16oz water first. Open emergency box and eat everything in it. Set a 20-min timer before getting more.' }, { q: "If Blood Sugar Issues Arise?", a: "Check glucose before food decisions. Treat lows appropriately, then return to plan. Track patterns." }, { q: "If Prep Day Gets Skipped?", a: "Focus on protein prep only. Buy pre-cut vegetables. Use convenience foods (rotisserie chicken). Get back to full prep next week." } ] },
+        portions: { title: "Portion Guidelines", content: [ { q: "Chicken Breast", a: "6-8 oz raw = 4-5 oz cooked" }, { q: "Ground Beef", a: "6 oz raw = 4-5 oz cooked" }, { q: "Steak", a: "6-8 oz raw (cook fresh)" }, { q: "Rice", a: "1/2 cup dry = 1 cup cooked" }, { q: "Hard-boiled eggs", a: "2 eggs = ~12g protein" } ] }
+    },
+    categorizedSwaps: {
+        breakfast: [
+            { type: 'breakfast', name: 'Morning Shake', calories: 365, protein: 50, items: ['2 scoops whey', '1 cup berries', '1 tbsp flaxseed'] },
+            { type: 'breakfast', name: 'Scrambled Eggs w/ Cheese', calories: 320, protein: 25, items: ['3 eggs', '1oz cheese'] }
+        ],
+        lunch: [
+            { type: 'lunch', name: 'Soup + Fruit', calories: 400, protein: 20, items: ['1 can Chunky soup', '1 piece fruit'] },
+            { type: 'lunch', name: 'Chicken + Vegetables', calories: 400, protein: 45, items: ['5oz chicken', '1.5 cups veg'] },
+            { type: 'lunch', name: 'Ground Beef + Vegetables', calories: 400, protein: 40, items: ['5oz beef', '1 cup mixed veg'] },
+            { type: 'lunch', name: '2 Hard-boiled Eggs + Fruit', calories: 250, protein: 15, items: ['2 eggs', '1 piece fruit'] }
+        ],
+        dinner: [
+            { type: 'dinner', name: 'Steak + Sweet Potato', calories: 700, protein: 50, items: ['6oz steak', '1 medium sweet potato'] },
+            { type: 'dinner', name: 'Chicken + Rice + Peas', calories: 650, protein: 50, items: ['6oz chicken', '1 cup rice', '1/2 cup peas'] },
+            { type: 'dinner', name: 'Burger (No Bun) + Veg', calories: 700, protein: 50, items: ['6oz patty', 'No bun', '2 cups veg'] }
+        ],
+        evening: [
+            { type: 'evening', name: 'Greek Yogurt', calories: 150, protein: 20, items: ['1 cup Greek yogurt'] },
+            { type: 'evening', name: 'Protein Bar', calories: 200, protein: 20, items: ['1 protein bar'] },
+            { type: 'evening', name: 'Protein Chips', calories: 140, protein: 21, items: ['1 bag protein chips'] }
+        ]
+    }
+};
+
+// This is the active plan that can be modified by swaps.
+let dietPlan;
+
+// --- APPLICATION STATE ---
+let appState;
+
+function getDefaultState() {
+    const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const now = new Date();
+    const today = dayNames[now.getDay()];
+    
+    return {
+        currentView: 'dashboard',
+        currentDay: today,
+        viewingDay: today,
+        weekPattern: 'A',        viewingPrepDay: 'sunday',
+        dailyCalorieTarget: 2050,
+        mealsCompleted: { A: {}, B: {} },
+        prepCompleted: { A: { sunday: [], wednesday: [] }, B: { sunday: [], wednesday: [] } }
+    };
+}
+
+function saveState() {
+    // We only save the app state and the *modified* diet plan
+    const stateToSave = {
+        appState,
+        dietPlan
+    };
+    localStorage.setItem('dietAppT1Dv2', JSON.stringify(stateToSave));
+}
+
+function loadState() {
+    const savedData = localStorage.getItem('dietAppT1Dv2');
+    if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        appState = parsedData.appState;
+        dietPlan = parsedData.dietPlan;
+        appState.viewingDay = appState.currentDay;        if (appState.viewingPrepDay === undefined) {
+             appState.viewingPrepDay = 'sunday';
+        }
+    } else {
+        // First time load or after a full reset
+        appState = getDefaultState();
+        // Deep copy the original plan to the active plan
+        dietPlan = JSON.parse(JSON.stringify(originalDietPlan));
+    }
+}
+
+
+// --- RENDER FUNCTIONS ---
+function render() {
+    saveState();
+    const content = document.getElementById('main-content');
+    switch (appState.currentView) {
+        case 'dashboard': content.innerHTML = renderDashboard(); break;
+        case 'prep': content.innerHTML = renderPrepList(); break;
+        case 'shopping': content.innerHTML = renderShoppingList(); break;
+        case 'guides': content.innerHTML = renderGuides(); break;
+    }
+    updateActiveNav();
+    updateDateDisplay();
+}
+
+function updateDateDisplay() {
+    const display = document.getElementById('current-date-display');
+    const day = appState.viewingDay;
+    const date = new Date();
+    const dayIndex = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+                       .indexOf(day);
+    const offset = dayIndex - date.getDay();
+    date.setDate(date.getDate() + offset);
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    display.textContent = date.toLocaleDateString('en-US', options);
+}
+
+function updateActiveNav() {
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.view === appState.currentView) {
+            btn.classList.add('bg-indigo-100', 'dark:bg-indigo-500/20', 'text-indigo-700', 'dark:text-indigo-300');
+            btn.classList.remove('hover:bg-slate-100', 'dark:hover:bg-slate-700', 'text-slate-600', 'dark:text-slate-400');
+        } else {
+            btn.classList.remove('bg-indigo-100', 'dark:bg-indigo-500/20', 'text-indigo-700', 'dark:text-indigo-300');
+            btn.classList.add('hover:bg-slate-100', 'dark:hover:bg-slate-700', 'text-slate-600', 'dark:text-slate-400');
+        }
+    });
+}
+
+function renderDashboard() {
+    const dayData = dietPlan[`week${appState.weekPattern}`][appState.viewingDay];
+    if (!dayData) return `<p>No plan for this day.</p>`;
+    const completedMeals = appState.mealsCompleted[appState.weekPattern]?.[appState.viewingDay] || [];
+    const totalTarget = appState.dailyCalorieTarget;
+    const consumedCalories = dayData.meals.reduce((acc, meal, i) => acc + (completedMeals[i] ? meal.calories : 0), 0);
+    const consumedProtein = dayData.meals.reduce((acc, meal, i) => acc + (completedMeals[i] ? meal.protein : 0), 0);    const dayNav = `
+        <div class="flex justify-between items-center mb-4">
+            <button ${appState.viewingDay === 'monday' ? 'disabled' : ''} onclick="changeDay(-1)" class="px-3 py-1 bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 disabled:opacity-50">&lt; Prev</button>
+            <h2 class="text-2xl font-bold capitalize text-slate-800 dark:text-slate-200">${appState.viewingDay}</h2>
+            <button ${appState.viewingDay === 'sunday' ? 'disabled' : ''} onclick="changeDay(1)" class="px-3 py-1 bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 disabled:opacity-50">Next &gt;</button>
+        </div>`;
+    
+    const summary = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm text-center">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Target Cals</p>
+                <input type="number" value="${appState.dailyCalorieTarget}" onchange="updateCalorieTarget(this.value)" class="text-xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400 w-full text-center bg-transparent focus:outline-none"/>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm text-center">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Consumed</p>
+                <p class="text-xl md:text-2xl font-bold">${consumedCalories}</p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm text-center">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Remaining</p>
+                <p class="text-xl md:text-2xl font-bold">${totalTarget - consumedCalories}</p>
+            </div>
+             <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm text-center">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Protein</p>
+                <p class="text-xl md:text-2xl font-bold">${consumedProtein}g</p>
+            </div>
+        </div>`;
+    const mealsHtml = dayData.meals.map((meal, index) => {
+        const isCompleted = completedMeals[index];
+        const displayCalories = meal.calories;
+        
+        return `
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-4 ${isCompleted ? 'opacity-60' : ''} transition-all">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-start">
+                    <div class="flex items-start space-x-4 flex-grow">
+                        <input type="checkbox" class="custom-checkbox h-6 w-6 rounded-md border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 mt-1 flex-shrink-0" 
+                               ${isCompleted ? 'checked' : ''} onchange="toggleMeal(${index})">
+                        <div class="flex-grow">
+                            <h3 class="font-bold text-lg ${isCompleted ? 'line-through' : ''}">${meal.name}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">${(meal.items || []).join(' &middot; ')}</p>
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0 mt-4 sm:mt-0 sm:ml-4">
+                        <p class="font-bold text-lg text-indigo-600 dark:text-indigo-400">${displayCalories} Cal</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">${meal.protein}g Protein</p>
+                        <button class="text-xs text-indigo-500 dark:text-indigo-400 hover:underline mt-1" onclick="showSwapOptions(event, ${index})">Swap</button>
+                    </div>
+                </div>            </div>`;
+    }).join('');
+    
+    return `${dayNav}${summary}<div class="space-y-4">${mealsHtml}</div>`;
+}
+
+function renderPrepList() {
+    const prepDay = appState.viewingPrepDay;
+    const list = dietPlan.prepLists[prepDay];
+    const completedTasks = appState.prepCompleted[appState.weekPattern]?.[prepDay] || [];
+    const tasksHtml = list.map((task, index) => `
+        <label class="flex items-center space-x-3 p-3 bg-white dark:bg-slate-800 rounded-md shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">
+            <input type="checkbox" class="custom-checkbox h-5 w-5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500" 
+                   ${completedTasks[index] ? 'checked' : ''} onchange="togglePrepTask('${prepDay}', ${index})">
+            <span class="${completedTasks[index] ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}">${task.text}</span>
+        </label>
+    `).join('');
+    const prepNav = `
+        <div class="flex border-b border-slate-200 dark:border-slate-700 mb-4 bg-white dark:bg-slate-800 rounded-t-lg shadow-sm">
+            <button onclick="setViewPrepDay('sunday')" 
+                    class="flex-1 py-3 text-center font-medium rounded-tl-lg ${prepDay === 'sunday' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'} transition-colors">
+                Sunday Prep
+            </button>
+            <button onclick="setViewPrepDay('wednesday')" 
+                    class="flex-1 py-3 text-center font-medium rounded-tr-lg ${prepDay === 'wednesday' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'} transition-colors">
+                Wednesday Prep
+            </button>
+        </div>`;
+    return `<h2 class="text-2xl font-bold mb-4 capitalize">Prep Checklists</h2>${prepNav}<div class="space-y-3">${tasksHtml}</div>`;
+}
+
+function renderShoppingList() {
+    // NEW: AI Shopping Assistant
+    const aiAssistantHtml = `
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm mb-6">
+             <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">✨ AI Shopping Assistant</h3>
+             <p class="text-slate-600 dark:text-slate-400 mb-4">Need ideas? Get a curated list of items based on your goals.</p>
+             <button onclick="openShoppingAssistant()" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Get Shopping Ideas</button>
+        </div>
+    `;
+
+    const sections = Object.keys(dietPlan.shoppingList).map(category => {
+        const itemsHtml = dietPlan.shoppingList[category].map(item => `<li class="py-2 px-3 border-b border-slate-100 dark:border-slate-700">${item}</li>`).join('');
+        return `
+            <div>
+                <h3 class="text-lg font-semibold capitalize text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700/50 p-2 rounded-t-md">${category.replace(/([A-Z])/g, ' $1')}</h3>
+                <ul class="bg-white dark:bg-slate-800 rounded-b-md shadow-sm">${itemsHtml}</ul>
+            </div>`;
+    }).join('');
+    return `<h2 class="text-2xl font-bold mb-4">Shopping List</h2>${aiAssistantHtml}<div class="space-y-6">${sections}</div>`;
+}
+
+function renderGuides() {
+    let guideHtml = `
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm mb-6">
+             <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">✨ AI Recipe Generator</h3>
+             <p class="text-slate-600 dark:text-slate-400 mb-4">Get a simple recipe idea for today's lunch and dinner.</p>
+             <button onclick="generateRecipe()" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Generate Today's Recipe</button>
+             <div id="recipe-result" class="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-md min-h-[50px]">Click the button to generate a recipe!</div>
+        </div>
+    `;
+
+    const guides = dietPlan.guides;
+    guideHtml += Object.entries(guides).map(([key, guide]) => {
+        const contentHtml = guide.content.map(item => `
+            <div class="py-3 border-b border-slate-100 dark:border-slate-700 last:border-b-0">
+                <p class="font-semibold text-slate-800 dark:text-slate-200">${item.q}</p>
+                <p class="text-slate-600 dark:text-slate-400">${item.a}</p>
+            </div>`).join('');
+        
+        let extraButton = '';
+        if (key === 'emergencyBox') {
+            extraButton = `<div class="mt-4">
+                                <button onclick="generateSnackIdeas()" class="w-full text-sm bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 py-2 px-4 rounded-md hover:bg-indigo-200 dark:hover:bg-indigo-500/30">✨ Get New Ideas</button>
+                                <div id="snack-ideas-result" class="mt-2 text-sm p-2 rounded-md">Click the button for new snack ideas!</div>
+                           </div>`;
+        }
+
+        return `
+            <div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">${guide.title}</h3>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm">${contentHtml}${extraButton}</div>
+            </div>
+        `;
+    }).join('');
+    return `<h2 class="text-2xl font-bold mb-4">Guides & AI Tools</h2><div class="space-y-6">${guideHtml}</div>`;
+}
+
+function renderAIModal(title, content) {
+    const modalContainer = document.getElementById('modal-container');
+    const modalContent = document.getElementById('modal-content');
+
+    modalContent.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">${title}</h3>
+            <button onclick="closeModal()" class="text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100">&times;</button>
+        </div>
+        ${content}`; // Inject dynamic content
+    modalContainer.classList.remove('hidden');
+    modalContainer.classList.add('flex');
+}
+
+// --- GEMINI API & AI FUNCTIONS ---
+
+/**
+ * Sanitizes a string to extract a valid JSON object.
+ * @param {string} text - The raw text from the AI.
+ * @returns {string|null} - A valid JSON string or null.
+ */
+function extractJson(text) {
+    if (typeof text !== 'string') return null;
+    const startIndex = text.indexOf('{');
+    const endIndex = text.lastIndexOf('}');
+    if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+        return null;
+    }
+    const jsonString = text.substring(startIndex, endIndex + 1);
+    try {
+        JSON.parse(jsonString);
+        return jsonString;
+    } catch (e) {
+        return null;
+    }
+}
+
+
+async function callGemini(prompt, isJson = false, schema = null) {
+    const apiKey = ""; // This will be populated by the environment.
+    const model = 'gemini-2.0-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    
+    let payload = { contents: [{ parts: [{ text: prompt }] }] };
+    if (isJson) {
+        payload.generationConfig = {
+            responseMimeType: "application/json",
+            responseSchema: schema
+        };
+    }
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`API call failed with status: ${response.status}. Body: ${errorBody}`);
+        }
+        const data = await response.json();
+        if (!data.candidates || data.candidates.length === 0) {
+           throw new Error("No response candidates from API.");
+        }
+        return data.candidates[0].content.parts[0].text;
+    } catch (error) {
+        console.error("Gemini API call error:", error);
+        return { error: `Failed to contact the AI model. There might be an issue with the API key or network connection. (${error.message})` };
+    }
+}
+
+async function handleAISwap(mealIndex) {
+    const input = document.getElementById('ai-input').value;
+    const resultDiv = document.getElementById('ai-result');
+    const submitBtn = document.getElementById('ai-submit-btn');
+
+    if (input.trim() === '') {
+        resultDiv.innerHTML = `<p class="text-red-500">Please describe the meal you want.</p>`;
+        return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<div class="loader"></div>`;
+
+    const originalMeal = dietPlan[`week${appState.weekPattern}`][appState.viewingDay].meals[mealIndex];
+    const { calories, protein } = originalMeal;
+
+    const prompt = `A user wants to swap a meal. The target is around ${calories} calories and ${protein}g of protein. The user wants to eat: "${input}". Determine a sensible portion size to best meet the calorie target. It's okay if protein doesn't match perfectly. Return a JSON object with the new meal's "name", "items" (as an array of strings), "calories", and "protein".`;
+
+    const schema = {
+        type: "OBJECT",
+        properties: {
+            name: { type: "STRING" },
+            items: { type: "ARRAY", items: { type: "STRING" } },
+            calories: { type: "NUMBER" },
+            protein: { type: "NUMBER" }
+        }
+    };
+
+    const result = await callGemini(prompt, true, schema);
+    if (result.error) {
+        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `Generate & Swap`;
+    } else {
+        const jsonString = extractJson(result);
+        if (!jsonString) {
+             resultDiv.innerHTML = `<p class="text-red-500">AI returned an invalid meal format. Please try again.</p>`;
+             console.error("Failed to extract JSON from AI response:", result);
+        } else {
+            const newMeal = JSON.parse(jsonString);
+            newMeal.type = originalMeal.type; // Maintain the meal type (breakfast, lunch, etc.)
+            performSwap(mealIndex, newMeal);
+            closeModal();
+        }
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `Generate & Swap`;
+    }
+}
+
+
+async function generateRecipe() {
+    const resultDiv = document.getElementById('recipe-result');
+    resultDiv.innerHTML = `<div class="flex justify-center"><div class="loader"></div></div>`;
+    
+    const dayData = dietPlan[`week${appState.weekPattern}`][appState.viewingDay];
+    const lunch = dayData.meals.find(m => m.type === 'lunch');
+    const dinner = dayData.meals.find(m => m.type === 'dinner');
+    
+    const prompt = `Create a simple, healthy recipe for a single person using the main ingredients from these two meals: Lunch (${lunch.name}) and Dinner (${dinner.name}). Assume basic pantry staples like oil, salt, and pepper are available. The recipe should be easy to follow with clear steps. The ingredients are: ${[...(lunch.items || []), ...(dinner.items || [])].join(', ')}. Format the output as clean HTML with headings and lists.`;
+
+    const result = await callGemini(prompt);
+    if (result.error) {
+        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
+    } else {
+        resultDiv.innerHTML = result.replace(/\n/g, '<br>');
+    }
+}
+
+async function generateSnackIdeas() {
+    const resultDiv = document.getElementById('snack-ideas-result');
+    resultDiv.innerHTML = `<div class="flex justify-center"><div class="loader"></div></div>`;
+    
+    const prompt = `Based on a high-protein diet, suggest 3 creative and satisfying "craving killer" snack ideas that are not just protein bars or chips. Focus on salty, savory, or satisfying textures. Provide a brief description for each. Format as a simple HTML list.`;
+    
+    const result = await callGemini(prompt);
+     if (result.error) {
+        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
+    } else {
+        resultDiv.innerHTML = result;    }
+}
+
+async function generateShoppingListIdeas(category) {
+    const resultDiv = document.getElementById('ai-shopping-result');
+    const submitBtn = document.getElementById('ai-shopping-submit-btn');
+    submitBtn.disabled = true;
+    resultDiv.innerHTML = `<div class="flex justify-center"><div class="loader"></div></div>`;
+
+    let prompt = `I need some shopping list ideas for my high-protein diet. `;
+    switch (category) {
+        case 'budget':
+            prompt += `Please suggest 5-7 budget-friendly, high-protein staple items I can buy.`;
+            break;
+        case 'flavor':
+            prompt += `Please suggest 5-7 low-calorie 'flavor booster' items to make my meals more interesting (like spices, sauces, or condiments).`;
+            break;
+        case 'snacks':
+            prompt += `Please suggest 5-7 healthy, high-protein snack items I can stock up on.`;
+            break;
+    }
+    prompt += ` Return the list as a simple, un-styled HTML unordered list (ul/li).`
+
+    const result = await callGemini(prompt);
+    if (result.error) {
+        resultDiv.innerHTML = `<p class="text-red-500">${result.error}</p>`;
+    } else {
+        resultDiv.innerHTML = result;
+    }
+    submitBtn.disabled = false;
+}
+
+// --- EVENT HANDLERS & LOGIC ---
+function closeSwapMenus() {
+    document.querySelectorAll('.swap-menu').forEach(menu => menu.remove());
+}
+
+function showSwapOptions(event, mealIndex) {
+    event.stopPropagation();
+    closeSwapMenus();
+
+    const currentMeal = dietPlan[`week${appState.weekPattern}`][appState.viewingDay].meals[mealIndex];
+    const mealType = currentMeal.type;
+    const allSwapOptions = dietPlan.categorizedSwaps[mealType] || [];
+
+    const availableSwapOptions = allSwapOptions.filter(option => option.name !== currentMeal.name);
+
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+    
+    const menu = document.createElement('div');
+    menu.className = 'swap-menu absolute z-10 w-48 bg-white dark:bg-slate-700 rounded-md shadow-lg border dark:border-slate-600 py-1 fade-in-enter';
+    menu.style.top = `${rect.bottom + window.scrollY}px`;
+    menu.style.right = `${window.innerWidth - rect.right}px`;
+
+    // NEW: Add AI Swap option
+    const aiSwapItem = document.createElement('button');
+    aiSwapItem.className = 'block w-full font-semibold text-left px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-600 border-b dark:border-slate-600';
+    aiSwapItem.innerHTML = '✨ AI Swap';
+    aiSwapItem.onclick = () => openAISwapModal(mealIndex);
+    menu.appendChild(aiSwapItem);
+
+
+    availableSwapOptions.forEach((option) => {
+        const item = document.createElement('button');
+        item.className = 'block w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600';
+        item.textContent = option.name;
+        item.onclick = () => performSwap(mealIndex, option);
+        menu.appendChild(item);
+    });
+
+    document.body.appendChild(menu);
+}
+
+function openAISwapModal(mealIndex) {
+    const content = `
+        <div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Describe the meal you want instead. The AI will try to match the original meal's calorie and protein goals.</p>
+            <textarea id="ai-input" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md p-2 h-24" placeholder="e.g., Chicken parmesan..."></textarea>
+            <button id="ai-submit-btn" onclick="handleAISwap(${mealIndex})" class="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center justify-center">Generate & Swap</button>
+            <div id="ai-result" class="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-md min-h-[50px]"></div>
+        </div>`;    renderAIModal('✨ AI Powered Swap', content);
+}
+
+
+function openShoppingAssistant() {
+    const content = `
+        <div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">What kind of shopping ideas are you looking for?</p>
+            <div class="space-y-2">
+                <button onclick="generateShoppingListIdeas('budget')" class="w-full text-left p-3 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border dark:border-slate-600">Budget-Friendly Staples</button>
+                <button onclick="generateShoppingListIdeas('flavor')" class="w-full text-left p-3 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border dark:border-slate-600">Flavor Boosters</button>
+                <button onclick="generateShoppingListIdeas('snacks')" class="w-full text-left p-3 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border dark:border-slate-600">Healthy Snack Stock-up</button>
+            </div>
+             <button id="ai-shopping-submit-btn" class="hidden"></button> <!-- Dummy button for loader state -->
+            <div id="ai-shopping-result" class="mt-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-md min-h-[50px]"></div>
+        </div>
+    `;
+    renderAIModal('✨ AI Shopping Assistant', content);
+}
+
+
+function performSwap(mealIndex, newMeal) {
+    dietPlan[`week${appState.weekPattern}`][appState.viewingDay].meals[mealIndex] = { ...newMeal };
+    closeSwapMenus();
+    render();
+}
+
+function setViewPrepDay(day) { appState.viewingPrepDay = day; render(); }
+function changeDay(offset) {
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    let currentIndex = dayNames.indexOf(appState.viewingDay);
+    let newIndex = currentIndex + offset;
+    if (newIndex >= 0 && newIndex < dayNames.length) { appState.viewingDay = dayNames[newIndex]; render(); }
+}
+function toggleMeal(mealIndex) {
+    const day = appState.viewingDay; const pattern = appState.weekPattern;
+    if (!appState.mealsCompleted[pattern]) { appState.mealsCompleted[pattern] = {}; }
+    if (!appState.mealsCompleted[pattern][day]) { appState.mealsCompleted[pattern][day] = []; }
+    appState.mealsCompleted[pattern][day][mealIndex] = !appState.mealsCompleted[pattern][day][mealIndex];
+    render();
+}
+function togglePrepTask(day, taskIndex) {
+    const pattern = appState.weekPattern;
+     if (!appState.prepCompleted[pattern]) { appState.prepCompleted[pattern] = { sunday: [], wednesday: [] }; }
+    if (!appState.prepCompleted[pattern][day]) { appState.prepCompleted[pattern][day] = []; }
+    appState.prepCompleted[pattern][day][taskIndex] = !appState.prepCompleted[pattern][day][taskIndex];
+    render();
+}
+function updateCalorieTarget(newTarget) {
+    const target = parseInt(newTarget, 10);
+    if (!isNaN(target) && target > 0) { appState.dailyCalorieTarget = target; render(); }
+}
+
+function resetWeek() {
+    if (confirm("Are you sure you want to reset the meals for this week? This will undo any swaps, but your checked-off progress will remain.")) {
+        // Restore the meals for the current week from the pristine backup
+        dietPlan[`week${appState.weekPattern}`] = JSON.parse(JSON.stringify(originalDietPlan[`week${appState.weekPattern}`]));
+        render();
+    }
+}
+function closeModal() {
+    document.getElementById('modal-container').classList.add('hidden');
+    document.getElementById('modal-container').classList.remove('flex');
+}
+
+// --- DARK MODE LOGIC ---
+function updateThemeIcons(isDark) {
+    const sunIcon = document.getElementById('sun-icon');
+    const moonIcon = document.getElementById('moon-icon');
+    if (isDark) {
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+    } else {
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+    }
+}
+
+function setDarkMode(isDark) {
+    localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+    updateThemeIcons(isDark);
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+}
+
+function toggleDarkMode() {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(!isDark);
+}
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+    
+    // Dark mode initialization
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    darkModeToggle.addEventListener('click', toggleDarkMode);
+    const userPrefersDark = localStorage.getItem('darkMode') !== 'false'; // Default to dark
+    setDarkMode(userPrefersDark);
+
+    // Other Event Listeners
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => { appState.currentView = btn.dataset.view; render(); }));
+    document.getElementById('week-pattern-selector').addEventListener('change', (e) => { appState.weekPattern = e.target.value; appState.viewingDay = appState.currentDay; render(); });    document.getElementById('reset-week-btn').addEventListener('click', resetWeek);
+    document.getElementById('modal-container').addEventListener('click', (e) => { if (e.target.id === 'modal-container') closeModal(); });
+    document.addEventListener('click', closeSwapMenus);
+
+
+    // Set initial values from state
+    document.getElementById('week-pattern-selector').value = appState.weekPattern;
+
+    // Initial Render
+    render();
+});
+</script>
+
+</body>
+</html>
